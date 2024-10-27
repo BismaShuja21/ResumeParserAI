@@ -66,49 +66,102 @@ def extract_education_from_resume(doc):
     return universities
 # --------------------------------------------------------------------------------
 
+# # ----------------------------------Extract Skills--------------------------------
+# def csv_skills(doc):
+#     skills_keywords = load_keywords('data/newSkills.csv')
+#     skills = set()
+
+#     for keyword in skills_keywords:
+#         if keyword.lower() in doc.text.lower():
+#             skills.add(keyword)
+
+#     return skills
+
+# nlp_skills = spacy.load('TrainedModel/skills')  # Load the trained NER model for skills
+
+# def extract_skills_from_ner(doc):
+#     non_skill_labels = {'DATE', 'TIME', 'PERCENT', 'MONEY', 'QUANTITY', 'ORDINAL', 'CARDINAL', 'EMAIL'}
+    
+#     skills = set()
+#     for ent in nlp_skills(doc.text).ents:
+#         if ent.label_ == 'SKILL':
+#             # Check if the entity text is not in the non-skill labels set
+#             if ent.label_ not in non_skill_labels and not ent.text.isdigit():
+#                 # Filter out non-alphabetic characters
+#                 skill_text = ''.join(filter(str.isalpha, ent.text))
+#                 if skill_text:
+#                     skills.add(skill_text)
+#     return skills
+
+# def is_valid_skill(skill_text):
+#     # Define criteria for valid skills (modify/add criteria as needed)
+#     return len(skill_text) > 1 and not any(char.isdigit() for char in skill_text)
+
+# def extract_skills(doc):
+#     skills_csv = csv_skills(doc)
+#     skills_ner = extract_skills_from_ner(doc)
+    
+#     filtered_skills_csv = {skill for skill in skills_csv if is_valid_skill(skill)}
+#     filtered_skills_ner = {skill for skill in skills_ner if is_valid_skill(skill)}
+    
+#     combined_skills = filtered_skills_csv.union(filtered_skills_ner)  # Combine filtered skills without duplicates
+    
+#     return list(combined_skills)  # Return combined filtered skills as a list
+
+# # --------------------------------------------------------------------------------
+
 # ----------------------------------Extract Skills--------------------------------
+import spacy
+
+# Load the NER model for skills and add a new NER pipeline to detect entities from CSV keywords
+nlp_skills = spacy.load('TrainedModel/skills')  
+
+def load_keywords(filepath):
+    with open(filepath, 'r') as file:
+        return [line.strip().lower() for line in file.readlines()]
+
 def csv_skills(doc):
     skills_keywords = load_keywords('data/newSkills.csv')
     skills = set()
-
+    
+    # Use SpaCy's matcher or simple keyword matching for efficient search
     for keyword in skills_keywords:
-        if keyword.lower() in doc.text.lower():
-            skills.add(keyword)
+        if f' {keyword} ' in f' {doc.text.lower()} ':
+            skills.add(keyword.capitalize())  # Capitalize for uniformity
 
     return skills
 
-nlp_skills = spacy.load('TrainedModel/skills')  # Load the trained NER model for skills
-
 def extract_skills_from_ner(doc):
-    non_skill_labels = {'DATE', 'TIME', 'PERCENT', 'MONEY', 'QUANTITY', 'ORDINAL', 'CARDINAL', 'EMAIL'}
-    
+    non_skill_labels = {'DATE', 'TIME', 'PERCENT', 'MONEY', 'QUANTITY', 'ORDINAL', 'CARDINAL', 'EMAIL', 'EXPERIENCE', 'MONTH', 'PROJECTS' , 'NAME'}
     skills = set()
+    
     for ent in nlp_skills(doc.text).ents:
-        if ent.label_ == 'SKILL':
-            # Check if the entity text is not in the non-skill labels set
-            if ent.label_ not in non_skill_labels and not ent.text.isdigit():
-                # Filter out non-alphabetic characters
-                skill_text = ''.join(filter(str.isalpha, ent.text))
-                if skill_text:
-                    skills.add(skill_text)
+        if ent.label_ == 'SKILL' and ent.label_ not in non_skill_labels and not ent.text.isdigit():
+            skill_text = ''.join(filter(str.isalpha, ent.text)).strip()
+            if skill_text:
+                skills.add(skill_text.capitalize())  # Uniform capitalization for consistency
     return skills
 
 def is_valid_skill(skill_text):
-    # Define criteria for valid skills (modify/add criteria as needed)
-    return len(skill_text) > 1 and not any(char.isdigit() for char in skill_text)
+    # Define stricter criteria for valid skills
+    return len(skill_text) > 2 and skill_text.isalpha()  # Ensure skills are alphabetical
 
 def extract_skills(doc):
+    # Retrieve skills from both CSV and NER, then apply filtering criteria
     skills_csv = csv_skills(doc)
     skills_ner = extract_skills_from_ner(doc)
     
+    # Apply validation to filter out any noisy data or common words
     filtered_skills_csv = {skill for skill in skills_csv if is_valid_skill(skill)}
     filtered_skills_ner = {skill for skill in skills_ner if is_valid_skill(skill)}
     
-    combined_skills = filtered_skills_csv.union(filtered_skills_ner)  # Combine filtered skills without duplicates
+    combined_skills = filtered_skills_csv.union(filtered_skills_ner)
     
-    return list(combined_skills)  # Return combined filtered skills as a list
+    return sorted(list(combined_skills))  # Sorted list for consistency
 
-# --------------------------------------------------------------------------------
+# Example usage:
+# doc = nlp("Experienced in Python, data science, and machine learning.")
+# print(extract_skills(doc))
 
 # ----------------------------------Extract Major---------------------------------
 def extract_major(doc):
@@ -184,18 +237,65 @@ def show_colored_skills(skills):
     st.write(', '.join(skills))
 
 
-def calculate_resume_score(resume_info):
-    score = 0
-    if resume_info['first_name'] and resume_info['last_name']:
-        score += 25
-    if resume_info['email']:
-        score += 25
-    if resume_info['degree_major']:
-        score += 25
-    if resume_info['skills']:
-        score += 25
-    return score
+# def calculate_resume_score(resume_info):
+#     score = 0
+#     if resume_info['first_name'] and resume_info['last_name']:
+#         score += 25
+#     if resume_info['email']:
+#         score += 25
+#     if resume_info['degree_major']:
+#         score += 25
+#     if resume_info['skills']:
+#         score += 25
+#     return score
 
+def calculate_resume_score(resume_info, target_job=None):
+    score = 0
+
+    # Personal Information
+    if resume_info.get('first_name') and resume_info.get('last_name'):
+        score += 10
+    if resume_info.get('email'):
+        score += 10
+
+    # Education: award based on level and relevance to target job if provided
+    degree_points = {'High School': 5, 'Bachelor': 10, 'Master': 15, 'PhD': 20}
+    if resume_info.get('degree_level') in degree_points:
+        score += degree_points[resume_info['degree_level']]
+        if target_job and resume_info.get('degree_major'):
+            if target_job['relevant_majors'] and resume_info['degree_major'] in target_job['relevant_majors']:
+                score += 5
+
+    # Skills: add points for each relevant skill
+    if resume_info.get('skills'):
+        relevant_skills = target_job.get('skills') if target_job else []
+        for skill in resume_info['skills']:
+            if skill in relevant_skills:
+                score += 3
+            else:
+                score += 1
+
+    # Experience: award based on years and relevance
+    if resume_info.get('experience'):
+        total_experience_years = sum(job.get('years', 0) for job in resume_info['experience'] if isinstance(job, dict))
+        score += min(total_experience_years * 2, 20)  # Cap at 20 points for experience
+        if target_job:
+            relevant_experience_years = sum(
+                job.get('years', 0) for job in resume_info['experience'] 
+                if isinstance(job, dict) and job.get('field') == target_job['field']
+            )
+            score += min(relevant_experience_years * 3, 10)  # Additional points for relevant experience
+
+    # Certifications & Projects
+    if resume_info.get('certifications'):
+        for cert in resume_info['certifications']:
+            score += 5 if cert in target_job.get('preferred_certifications', []) else 2
+    if resume_info.get('projects'):
+        for project in resume_info['projects']:
+            if 'relevant' in project:
+                score += 5 if project['relevant'] else 2
+
+    return min(score, 100)  # Cap the score at 100
 
 def extract_resume_info(doc):
     first_lines = '\n'.join(doc.text.splitlines()[:10])

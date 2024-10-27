@@ -28,11 +28,11 @@ def insert_pdf(name, data):
 def process_user_mode():
     create_table()  # Create table if it doesn't exist
 
-    st.title("Resume Parser using NLP")
-    uploaded_file = st.file_uploader("Upload a PDF resume", type="pdf")
+    st.title("Resume Parser")
+    uploaded_file = st.file_uploader("Upload a resume", type="pdf")
 
     if uploaded_file:
-        st.write("File uploaded successfully!")
+        st.write("File uploaded!")
 
         pdf_name = uploaded_file.name
         pdf_data = uploaded_file.getvalue()
@@ -53,7 +53,7 @@ def process_user_mode():
         contact_number = extract_contact_number_from_resume(pdf_text)
         st.write(f"Phone Number:  +{contact_number}")
         
-        st.write(f"Degree/Major: {resume_info['degree_major']}")
+        # st.write(f"Degree/Major: {resume_info['degree_major']}")
 
         st.markdown('<hr>', unsafe_allow_html=True)
         st.header("Education:")
@@ -79,18 +79,21 @@ def process_user_mode():
         percentage = resume_score
         percentage_str = str(percentage)
         bar = (
-            f'<div style="background: linear-gradient(90deg, #f63366 {percentage_str}%, #d6d6d6 {percentage_str}%);'
-            'height: 30px; border-radius: 5px; display: flex; align-items: center;">'
-            f'<div style="color: white; text-align: center; width: 100%;">{percentage}%</div>'
-            '</div>'
+            f'<div style="background: linear-gradient(90deg, #4CAF50 {percentage_str}%, #d6d6d6 {percentage_str}%);'  # Green gradient
+    'height: 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);'
+    'position: relative; overflow: hidden; transition: background 0.3s;">'
+    f'<div style="color: #fff; text-align: center; width: 100%; font-weight: bold; font-family: Arial, sans-serif;'
+    'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px;">'  # Changed font family and size
+    f'{percentage}%</div>'
+    '</div>'
         )
         st.markdown(bar, unsafe_allow_html=True)
 
-        st.markdown('<hr>', unsafe_allow_html=True)
-        st.header("Suggested Skills for the Desired Job:")
-        desired_job = st.text_input("Enter the job you are looking for:")
-        suggested_skills = suggest_skills_for_job(desired_job)
-        st.write(suggested_skills)
+        # st.markdown('<hr>', unsafe_allow_html=True)
+        # st.header("Suggested Skills for the Desired Job:")
+        # desired_job = st.text_input("Enter the job you are looking for:")
+        # suggested_skills = suggest_skills_for_job(desired_job)
+        # st.write(suggested_skills)
 
 if __name__ == '__main__':
     process_user_mode()
